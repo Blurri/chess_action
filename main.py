@@ -3,13 +3,13 @@ BOARD_SIZE = 8
 def create_board():
     board = [['.' for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
-    # Player pieces (uppercase)
-    board[6][0] = 'P'  # Pawn on A2
-    board[7][1] = 'N'  # Knight on B1
+    # Player pieces
+    board[4][3] = 'P'  # Pawn on D4
+    board[5][4] = 'N'  # Knight on E3
 
-    # Enemy pieces (lowercase)
-    board[1][7] = 'p'  # Enemy Pawn on H7
-    board[0][7] = 'r'  # Enemy Rook on H8
+    # Enemy pieces
+    board[3][2] = 'p'  # Enemy Pawn on C5
+    board[2][5] = 'r'  # Enemy Rook on F6
 
     return board
 
@@ -65,6 +65,58 @@ def move_piece(board, from_row, from_col, to_row, to_col):
     board[to_row][to_col] = piece
     board[from_row][from_col] = '.'
     
+def find_pieces(board, is_enemy=False):
+    pieces = []
+    for row in range(BOARD_SIZE):
+        for col in range(BOARD_SIZE):
+            piece = board[row][col]
+            if is_enemy and piece.islower():
+                pieces.append((row, col, piece))
+            elif not is_enemy and piece.isupper():
+                pieces.append((row, col, piece))
+    return pieces
+
+def enemy_turn(board):
+    enemies = find_pieces(board, is_enemy=True)
+    players = find_pieces(board, is_enemy=False)
+
+    for row, col, piece in enemies:
+        # Check if any player piece is adjacent (simple attack rule)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                r, c = row + dr, col + dc
+                if is_on_board(r, c) and board[r][c].isupper():
+                    print(f"!!! {piece} attacks and captures {board[r][c]} at {chr(c + ord('A'))}{8 - r}")
+                    board[r][c] = piece
+                    board[row][col] = '.'
+                    return  # One enemy acts per turn for now
+
+        # No adjacent attack? Move toward the closest player
+        if not players:
+            return
+
+        # Find closest player
+        target_row, target_col, _ = min(
+            players,
+            key=lambda p: abs(p[0] - row) + abs(p[1] - col)
+        )
+
+        # Decide direction
+        dr = 0 if target_row == row else (1 if target_row > row else -1)
+        dc = 0 if target_col == col else (1 if target_col > col else -1)
+
+        new_row = row + dr
+        new_col = col + dc
+
+        if is_on_board(new_row, new_col) and board[new_row][new_col] == '.':
+            board[new_row][new_col] = piece
+            board[row][col] = '.'
+            print(f"... {piece} moves to {chr(new_col + ord('A'))}{8 - new_row}")
+            return  # Again: only 1 enemy moves per turn for simplicity
+
+
 def main():
     board = create_board()
 
@@ -102,6 +154,8 @@ def main():
 
         to_row, to_col = moves[int(move_choice)]
         move_piece(board, from_row, from_col, to_row, to_col)
+
+        enemy_turn(board)
 
 if __name__ == "__main__":
     main()
